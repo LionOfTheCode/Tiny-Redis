@@ -1,0 +1,18 @@
+# course config files
+*.yaml
+
+# gradle
+.gradle/
+build
+
+
+# idea config
+.idea
+
+# old stages
+/Tiny Redis/*
+!/Tiny Redis/task/
+/Tiny Redis/task/*
+!/Tiny Redis/task/main.py
+!/Tiny Redis/task/test
+!/Tiny Redis/task/tests.py
