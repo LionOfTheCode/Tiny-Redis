@@ -175,7 +175,7 @@ class TinyRedis:
             return self.parsing_error_response()
 
         with self.thread_lock:
-            data_key = arguments[0].decode()
+            data_key = arguments[0]
             data, expiration_time = self.data_store.get(data_key, (None, None))
             if expiration_time and expiration_time < time.monotonic():
                 del self.data_store[data_key]
@@ -196,14 +196,14 @@ class TinyRedis:
             return self.parsing_error_response()
 
         with self.thread_lock:
-            data_key = arguments[0].decode()
+            data_key = arguments[0]
             data_value = arguments[1]
             if len(arguments) == 4:
 
                 if arguments[2].upper() != b"EX":
                     return self.parsing_error_response()
                 try:
-                    expiration_time = int(arguments[3].decode())
+                    expiration_time = int(arguments[3])
                 except ValueError:
                     return self.parsing_error_response()
 
@@ -234,8 +234,7 @@ class TinyRedis:
             return self.parsing_error_response()
 
         with self.subscribers_lock:
-            for channel in arguments:
-                channel_name = channel.decode()
+            for channel_name in arguments:
                 if channel_name not in self.subscribers:
                     self.subscribers[channel_name] = set()
                 self.subscribers[channel_name].add(client_socket)
@@ -256,7 +255,7 @@ class TinyRedis:
         if len(arguments) != 2:
             return self.parsing_error_response()
 
-        channel = arguments[0].decode()
+        channel = arguments[0]
         message = arguments[1]
 
         with self.subscribers_lock:
@@ -304,9 +303,8 @@ class TinyRedis:
         num_of_del_keys = 0
         with self.thread_lock:
             for data_key in arguments:
-                key = data_key.decode()
-                if key in self.data_store:
-                    del self.data_store[key]
+                if data_key in self.data_store:
+                    del self.data_store[data_key]
                     num_of_del_keys += 1
 
         num_of_del_keys = str(num_of_del_keys).encode()
@@ -363,7 +361,7 @@ class TinyRedis:
         """
         Provides a response for unrecognized commands.
 
-        :return: A predefined response in bytes indicating that the command is 
+        :return: A predefined response in bytes indicating that the command is
                  unrecognized.
         :rtype: bytes
         """
@@ -371,24 +369,28 @@ class TinyRedis:
 
     def encode_message(self, args: list[bytes | None]) -> bytes:
         """
-        Encodes a list of byte strings into a unified message format. Each byte string 
-        in the input is formatted with its length and content, separated by specific 
-        control characters. If any element in the input list is `None`, returns a 
-        predefined byte string indicating a null response.
+        Encodes a list of byte strings into a specific protocol format.
 
-        :param args: A list of byte strings (`list[bytes]`) to be encoded. If an 
-            element in the list is `None`, it implies a null input.
-        :return: A single byte string (`bytes`) containing the encoded message. For null 
-            inputs, a predefined null response `$-1\r\n` is returned.
+        The method processes a list of byte strings and constructs an encoded
+        message based on a predefined protocol where each argument is prefixed
+        with its length and suffixed with a delimiter. If the list contains
+        `None`, it returns a specific encoded value signaling the absence of data.
+
+        :param args: (list[bytes | None]): A list of byte strings or `None` values
+                to be encoded following the protocol specification.
+
+        :rtype: bytes: The encoded message in the protocol's format.
         """
         if None in args:
             return b"$-1\r\n"
 
-        message = f""
+        parts = []
         for arg in args:
-            message += f"${len(arg)}\r\n{arg.decode()}\r\n"
+            parts.append(b"$" + str(len(arg)).encode() + self.DELIMITER)
+            parts.append(arg)
+            parts.append(self.DELIMITER)
 
-        return message.encode()
+        return b"".join(parts)
 
     def parse_command(self, message: bytes) -> list[bytes]:
         """
